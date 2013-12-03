@@ -2,7 +2,7 @@
 
 from random import random, choice, randint
 from locale import getlocale
-from os.path import exists
+from os.path import exists, join
 
 import sqlite3
 
@@ -15,6 +15,8 @@ class DataSource:
         """Creates a new DataSource with no data.  Subclasses may also create
         a new DataSource object from an existing file or database."""
         self.localesDir = None
+        self.sourceFilePath = None
+
         
     def loadDataItems(self, localesDir, dataItems=None, locales=None):
         
@@ -44,15 +46,9 @@ class DataSource:
         if self.localesDir == None:
             raise Exception('localesDir not set')
         
-        
-    def open(self, createNew=False, **keywords):
-        'open existing DataSource from storage location'
-        pass
-        
-        
-    def close(self):
-        'close connection(s) to storage location'
-        pass
+        self.sourceFilePath = join(self.localesDir, locale, dataItem + '.txt')
+        if not exists(self.sourceFilePath):
+            raise Exception('source file %s not found' % self.sourceFilePath)
         
         
 class InMemoryDataSource(DataSource):
@@ -64,22 +60,46 @@ class SqliteDataSource(DataSource):
     def __init__(self):
         self.conn = None
         
-    def open(self, createNew=False, **keywords):
-        if 'dbFile' not in keywords.keys():
-            raise Exception('Missing dbFile arguement')
-            
-        self.dbFile = keywords['dbFile']
-        if createNew:
-            if exists(self.dbFile):
-                raise Exception("%s already exists." % self.dbFile)
-            self.conn = sqlite3.connect(self.dbFile)
-        else:
-            raise Exception('loading data from existing file not implemented')
-            if not exists(self.dbFile):
-                raise Exception("%s does not exist" % self.dbFile)
-            
+        
+    def open(self, dbFile):
+        '''Opens an existing sqllite file if file exists.  Will create one if 
+        it does not exist'''
+        
+        self.conn = sqlite3.connect(dbFile)
+        
     def loadDataItem(self, dataItem, locale):
+        # Call base class method to validate that source files exist
         DataSource.loadDataItem(self, dataItem, locale)
+        print('loadDataItem')
+        
+        cursor = self.conn.cursor()
+        
+        if self.hasTable(dataItem):
+            cursor.execute('delete maleFirstNames')
+        else:
+            sql = "create table if not exists maleFirstNames (name text, rand_sort integer)"
+            cursor.execute(sql)
+        
+        sourceFile = open(self.sourceFilePath, 'r')
+        
+        print(dir(sourceFile))
+        
+        sourceFile.close()
+        
+        
+    def hasTable(self, tableName):
+        cursor = self.conn.cursor()
+        cursor.execute("select * from sqlite_master where tbl_name = ?", (tableName,))
+        for row in cursor:
+            return True
+        return False
+        
+        
+    def randomMaleName(self):
+        pass
+        
+    def randomFemaleName(self):
+        pass
             
     def close(self):
         if self.conn != None:
@@ -111,28 +131,70 @@ class SqliteDataSource(DataSource):
         # self.conn.close()
 
 
-def randomSex():
-    x = random()
-    if x <= 0.495:
-        return 'M'    
-    if x > 0.495 and x < 0.99:
-        return 'F'    
-    if x >= 0.99 and x < 0.995:
-        return 'H'
-    return 'U'
 
-MALE_FIRST_NAMES = ['Ralph','Waldo','Oscar','Wolfgang','Garth','Wayne']
-FEMALE_FIRST_NAMES = ['Hong','Brunhilda','Imogen','Draganna','Merlin']
-LAST_NAMES = ['Smith','Jones','Wilson','Fitzsimmons','Coleson','Stark','Banner','Rodgers']
 
-def randomFirstName(sex='U'):
-    if sex == 'M':
-        return choice(MALE_FIRST_NAMES)
-    if sex == 'F':
-        return choice(FEMALE_FIRST_NAMES)
-            
+
+class Person:
     
+    def __init__(self):
+        self.sex = None
+        self.firstName = None
+        self.middleName = None
+        self.lastName = None
+        self.age = None
+    
+    def __str__(self):
+        array = {
+            'sex': self.sex,
+            'firstName': self.firstName,
+            'middleName': self.middleName,
+            'lastName': self.lastName,
+            'age':self.age}
+        return str(array)
+    
+        
+class PersonGenerator:
+    
+    def __init__(self, dataSource):
+        self.dataSource = dataSource
+        
+    def next(self, **keywords):
+        
+        person = Person()        
+        
+        if 'sex' in keywords.keys():
+            person.sex = keywords['sex']
+            if person.sex not in ('M','F','H','U'):
+                raise(ValueError())
+        else:
+            person.sex = PersonGenerator.randomSex()
+            
+            
+        if 'firstName' in keywords.keys():
+            person.firstName = keywords['firstName']
+        elif person.sex == 'M':
+            person.firstName = self.dataSource.randomMaleName()
+        elif person.sex == 'F':
+            person.firstName = self.dataSource.randomFemaleName()
+        elif random() < 0.5:
+            person.firstName = self.dataSource.randomMaleName()
+        else:
+            person.firstName = self.dataSource.randomFemaleName()
+            
+        return person
+        
+        
+    def randomSex():
+        x = random()
+        if x <= 0.495:
+            return 'M'    
+        if x > 0.495 and x < 0.99:
+            return 'F'    
+        if x >= 0.99 and x < 0.995:
+            return 'H'
+        return 'U'
 
+        
 def randomMiddleName(sex):
     return randomFirstName(sex)
 
@@ -141,17 +203,9 @@ def randomLastName(firstPart='', divider=' '):
 
 class RandomPerson():
     def __init__(self, **keywords):
-        if 'sex' in keywords.keys():
-            self.sex = keywords['sex']
-            if self.sex not in ('M','F','H','U'):
-                raise(ValueError())
-        else:
-            self.sex = randomSex()
+
             
-        if 'firstName' in keywords.keys():
-            self.firstName = keywords['firstName']
-        else:
-            self.firstName = randomFirstName(self.sex)
+
         
         if 'middleName' in keywords.keys():
             self.middleName = keywords['middleName']
@@ -176,14 +230,7 @@ class RandomPerson():
             
         self.age = randint(minAge*100, maxAge*100)/100.0
             
-    def __str__(self):
-        array = {
-        'sex': self.sex,
-        'firstName': self.firstName,
-        'middleName': self.middleName,
-        'lastName': self.lastName,
-        'age':self.age}
-        return str(array)
+
 
 def randomCouple(**keywords):
     """Will generate two random people who may or may not have the last name.

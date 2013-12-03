@@ -14,14 +14,35 @@ import locale
 # sudo locale-gen de_DE.utf8
 
 
+# class TestDataSource(unittest.TestCase):
+    # pass
+# 
+# 
+class TestInMemoryDataSource(unittest.TestCase):
+    
+    def testStuff(self):
+        dataSource = dg.InMemoryDataSource()
+        # dataSource.loadDataItems(
+            # './locales',
+            # ['maleFirstNames'])
+            # 
+        # personGenerator = dg.PersonGenerator(dataSource)
+        # for i in range(10):
+           # print(personGenerator.next(sex='M'))
+
 class TestSqliteDataSource(unittest.TestCase):
     
     def testStuff(self):
         dataSource = dg.SqliteDataSource()
-        dataSource.open(True, dbFile='./test.sqlite3')
+        dataSource.open('./test.sqlite3')
         dataSource.loadDataItems(
             './locales',
             ['maleFirstNames'])
+            
+        personGenerator = dg.PersonGenerator(dataSource)
+        for i in range(10):
+           print(personGenerator.next(sex='M'))
+            
         dataSource.close()
 
 
