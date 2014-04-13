@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 
 import unittest
-import DataGenerator as dg
+
+from DataGenerator import \
+    InMemoryDataSource, \
+    Person
 import locale
 
 # View all available locales
@@ -18,10 +21,28 @@ import locale
     # pass
 # 
 # 
+
+
+
 class TestInMemoryDataSource(unittest.TestCase):
     
     def testStuff(self):
-        dataSource = dg.InMemoryDataSource()
+        dataSource = InMemoryDataSource()
+        
+        values = ['John', 'Robert', 'William', 'Andrew']
+        dataSource.loadDataItem('maleNames','en_us', values=values)
+        
+        values = ['Elizabeth', 'Jennifer', 'Mary', 'Ann']
+        dataSource.loadDataItem('femaleNames', 'en_us', values=values)
+        
+        values = ['Smith', 'Jones', 'Thomas', 'Davis']
+        dataSource.loadDataItem('lastNames', 'en_us', values=values)
+        
+        person = Person(dataSource)
+        
+        
+        print(str(person))
+        
         # dataSource.loadDataItems(
             # './locales',
             # ['maleFirstNames'])
@@ -30,20 +51,20 @@ class TestInMemoryDataSource(unittest.TestCase):
         # for i in range(10):
            # print(personGenerator.next(sex='M'))
 
-class TestSqliteDataSource(unittest.TestCase):
-    
-    def testStuff(self):
-        dataSource = dg.SqliteDataSource()
-        dataSource.open('./test.sqlite3')
-        dataSource.loadDataItems(
-            './locales',
-            ['maleFirstNames'])
-            
-        personGenerator = dg.PersonGenerator(dataSource)
-        for i in range(10):
-           print(personGenerator.next(sex='M'))
-            
-        dataSource.close()
+# class TestSqliteDataSource(unittest.TestCase):
+    # 
+    # def testStuff(self):
+        # dataSource = dg.SqliteDataSource()
+        # dataSource.open('./test.sqlite3')
+        # dataSource.loadDataItems(
+            # './locales',
+            # ['maleFirstNames'])
+            # 
+        # personGenerator = dg.PersonGenerator(dataSource)
+        # for i in range(10):
+           # print(personGenerator.next(sex='M'))
+            # 
+        # dataSource.close()
 
 
 
