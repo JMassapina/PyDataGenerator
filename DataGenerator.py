@@ -3,7 +3,8 @@
 from random import random, choice, randint
 from locale import getlocale
 from os.path import exists, join
-from datetime import datetime
+from datetime import datetime, timedelta
+from math import floor
 
 import sqlite3
 
@@ -203,7 +204,6 @@ class Person:
         if self.context == None:
             self.context = DefaultContext()
             
-        
         if 'sex' in keywords.keys():
             self.sex = keywords['sex']
             if self.sex not in Person.SEXES:
@@ -213,7 +213,9 @@ class Person:
             
         self.age = self.context.generateAgeRule()
         
-        self.dateOfBirth = self.context.defaultSexRule()
+        # IMPROVEMENT: Date of birth based on arbitrary date
+        self.dateOfBirth = datetime.today() - timedelta(self.age * 365.25)
+        self.age = floor(self.age)
             
         self.firstName, tempSex = self.firstOrMiddleName(
             self.sex, 
@@ -227,25 +229,20 @@ class Person:
         
         self.lastName = self.dataSource.randomLastName()
         
-        
-        
     def firstOrMiddleName(self, sex, nameType, **keywords):
         if nameType in keywords.keys():
             return keywords[nameType]
         if sex == 'male' or (sex == 'unknown' and random() < 0.5):
             return self.dataSource.randomMaleName(), 'male'
         return self.dataSource.randomFemaleName(), 'female'
-        
-        
-
-        
-        
+          
     def __str__(self):
         array = {
             'sex': self.sex,
             'firstName': self.firstName,
             'middleName': self.middleName,
             'lastName': self.lastName,
+            'dateOfBirth':self.dateOfBirth,
             'age':self.age}
         return str(array)
         
